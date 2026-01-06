@@ -24,15 +24,5 @@ jobs:
     - name: Install dependencies
       run: npm ci
     
-    - name: Package extension
-      run: npm run package
-    
-    - name: List generated XPI files
-      run: ls -la *.xpi 2>/dev/null || echo "No XPI files found in root directory"
-    
-    - name: Upload XPI artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: extension-package
-        path: "*.xpi"
-        if-no-files-found: warn
+    - name: Run build
+      run: npm run build
