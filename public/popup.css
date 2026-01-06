@@ -31,7 +31,6 @@ body {
 #followers-container,
 #following-container {
     display: flex;
-    cursor: pointer;
     gap: 4px;
 }
 

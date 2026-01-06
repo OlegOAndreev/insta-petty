@@ -2,3 +2,45 @@ This is a webextension for tracking followers on Instagram.
 
 ## Browser support
 For now the extension only supports Firefox desktop and Firefox mobile.
+
+## Installing
+
+### Installing on Desktop
+
+Installing extension is done by clicking 'Install Add-on from file', see
+https://support.mozilla.org/en-US/kb/find-and-install-add-ons-add-features-to-firefox
+
+### Installing on Android
+
+Installing extension on Android is more involved, see https://bugzilla.mozilla.org/show_bug.cgi?id=1814123#c2
+
+
+## Development
+
+### Building
+```bash
+npm run build
+```
+Builds the extension into the `dist/` directory.
+
+## Distribution
+
+### Packaging and signing
+```bash
+npm run package
+```
+Builds and creates a packaged `.xpi` file in the `web-extartifacts/` directory. See
+https://github.com/TomasHubelbauer/firefox-permanent-unsigned-extension?tab=readme-ov-file#update-signing-the-extension-without-publishing-it-on-amo
+
+**Note:** Signing requires AMO API credentials. Set them as environment variables:
+```bash
+export WEB_EXT_API_KEY="your-jwt-issuer"
+export WEB_EXT_API_SECRET="your-jwt-secret"
+```
+Or create a `.web-ext-config.js` file in the project root.
+
+### Cleaning artifacts
+```bash
+rm -rf dist/ web-ext-artifacts/ *.xpi
+```
+Removes the artifacts.

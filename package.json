@@ -1,9 +1,11 @@
 {
   "type": "module",
   "scripts": {
-    "build": "npm run build:ts && npm run build:public",
+    "build": "npm run build:ts && npm run build:public && npm run lint:webext",
     "build:ts": "eslint src/*.ts && esbuild --bundle --target=chrome89,firefox89 --format=esm --outdir=dist src/popup.ts",
-    "build:public": "cp -r public/* dist/"
+    "build:public": "cp -r public/* dist/",
+    "lint:webext": "web-ext lint --source-dir dist",
+    "package": "npm run build && web-ext sign --source-dir dist --channel unlisted && cp web-ext-artifacts/*.xpi insta-petty-`jq -r .version < ./public/manifest.json`.xpi"
   },
   "devDependencies": {
     "@eslint/css": "^0.14.1",
