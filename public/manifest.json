@@ -1,0 +1,25 @@
+{
+    "manifest_version": 2,
+    "name": "Insta-petty",
+    "version": "0.0.1",
+    "description": "Track followers and following for Instagram",
+    "icons": {
+        "16": "icons/icon16.png",
+        "48": "icons/icon48.png",
+        "128": "icons/icon128.png"
+    },
+    "permissions": [
+        "cookies",
+        "storage",
+        "https://*.instagram.com/*"
+    ],
+    "browser_action": {
+        "default_icon": {
+            "16": "icons/icon16.png",
+            "48": "icons/icon48.png",
+            "128": "icons/icon128.png"
+        },
+        "default_title": "Insta-petty",
+        "default_popup": "popup.html"
+    }
+}

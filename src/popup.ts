@@ -1,0 +1,344 @@
+import { Chart } from "chart.js/auto";
+import prettyMs from "pretty-ms";
+import { getFriendshipPage, getUserId, getUsername } from "./instagram.js";
+import type { FollowersHistory, User } from "./models.js";
+import {
+    getCountsHistory,
+    getFollowersHistory,
+    getHistoryScrollPosition,
+    getLastError,
+    getLatestCounts,
+    getStoredUsername,
+    storeCounts,
+    storeFollowersAndUpdateHistory,
+    storeHistoryScrollPosition,
+    storeLastError,
+    storeUsername
+} from "./storage.js";
+
+function getById<T extends HTMLElement>(elementId: string): T {
+    const element = document.getElementById(elementId);
+    if (!element) {
+        throw new Error(`Element with id "${elementId}" not found`);
+    }
+    return element as T;
+}
+
+const errorLabel = getById<HTMLElement>('error');
+const lastRefreshTimeLabel = getById<HTMLElement>('last-refresh-time');
+const usernameLabel = getById<HTMLElement>('username');
+const refreshBtn = getById<HTMLButtonElement>('refresh');
+const followersCountLabel = getById<HTMLElement>('followers-count');
+const followingCountLabel = getById<HTMLElement>('following-count');
+const followersChartCanvas = getById<HTMLCanvasElement>('followers-chart');
+const followersHistoryList = getById<HTMLElement>('followers-history-list');
+
+function truncateMessage(str: string, maxLength: number): string {
+    if (str.length <= maxLength) {
+        return str;
+    }
+    return str.substring(0, maxLength) + '...';
+}
+
+function timestampToStr(time: number): string {
+    const date = new Date(time);
+    const dateStr = date.toLocaleDateString(undefined, { dateStyle: 'medium' });
+    const timeStr = date.toLocaleTimeString(undefined, { timeStyle: 'short', hourCycle: 'h24' });
+    return `${dateStr} ${timeStr}`;
+}
+
+interface TimelineEntry {
+    time: number;
+    user: User;
+    action: 'followed' | 'unfollowed';
+}
+
+function createTimelineFromHistory(history: FollowersHistory[]): TimelineEntry[] {
+    const timeline: TimelineEntry[] = [];
+    for (const entry of history) {
+        for (const user of entry.added) {
+            timeline.push({
+                time: entry.time,
+                user,
+                action: 'followed'
+            });
+        }
+        for (const user of entry.removed) {
+            timeline.push({
+                time: entry.time,
+                user,
+                action: 'unfollowed'
+            });
+        }
+    }
+    return timeline;
+}
+
+let historyScrolledOnLoad = false;
+async function renderFollowerHistory(): Promise<void> {
+    let history: FollowersHistory[];
+    try {
+        history = await getFollowersHistory(1000);
+    } catch (error) {
+        console.error('Failed to render follower history:', error);
+        followersHistoryList.innerHTML = '<div class="history-entry">Error loading history</div>';
+        return;
+    }
+    const timeline = createTimelineFromHistory(history);
+
+    followersHistoryList.innerHTML = '';
+    if (timeline.length === 0) {
+        const emptyEntry = document.createElement('div');
+        emptyEntry.className = 'history-entry';
+        emptyEntry.textContent = 'No followers yet';
+        followersHistoryList.appendChild(emptyEntry);
+        return;
+    }
+
+    const fragment = document.createDocumentFragment();
+    for (const entry of timeline) {
+        const timeStr = new Date(entry.time).toLocaleDateString(undefined, { dateStyle: 'medium' });
+        const actionClass = entry.action;
+        const actionText = entry.action;
+
+        const entryDiv = document.createElement('div');
+        entryDiv.className = `history-entry ${actionClass}`;
+
+        const timeSpan = document.createElement('span');
+        timeSpan.className = 'history-time';
+        timeSpan.textContent = timeStr;
+        entryDiv.appendChild(timeSpan);
+
+        const usernameLink = document.createElement('a') as HTMLAnchorElement;
+        usernameLink.className = 'history-username';
+        usernameLink.href = `https://www.instagram.com/${entry.user.username}`;
+        usernameLink.textContent = `@${entry.user.username}`;
+        entryDiv.appendChild(usernameLink);
+
+        const actionSpan = document.createElement('span');
+        actionSpan.textContent = ` ${actionText}`;
+        entryDiv.appendChild(actionSpan);
+
+        fragment.appendChild(entryDiv);
+    }
+    followersHistoryList.appendChild(fragment);
+
+    if (!historyScrolledOnLoad) {
+        const savedPosition = await getHistoryScrollPosition();
+        followersHistoryList.scrollTop = savedPosition;
+        historyScrolledOnLoad = true;
+    }
+}
+
+let chartInstance: Chart | null = null;
+async function renderFollowersChart() {
+    const style = getComputedStyle(followingCountLabel);
+    Chart.defaults.font.family = style.fontFamily;
+    Chart.defaults.font.size = 12;
+
+    const MAX_DAYS = 30;
+    const DAYS_STEP = 5;
+    try {
+        const history = await getCountsHistory(MAX_DAYS);
+        if (history.length === 0) {
+            return;
+        }
+
+        if (chartInstance) {
+            chartInstance.destroy();
+            chartInstance = null;
+        }
+
+        const followersData = [];
+        for (const entry of history) {
+            followersData.push({
+                x: entry.time,
+                y: entry.followersCount,
+            });
+        }
+
+        const now = Date.now();
+        const thirtyDaysAgo = now - MAX_DAYS * 24 * 3600 * 1000;
+        chartInstance = new Chart(followersChartCanvas, {
+            type: 'line',
+            data: {
+                datasets: [{ data: followersData, borderColor: '#9575cd' }]
+            },
+            options: {
+                animation: {
+                    duration: 0
+                },
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false,
+                    },
+                    tooltip: {
+                        callbacks: {
+                            title: (context) => {
+                                //@ts-expect-error The chart data is untyped
+                                const timestamp = context[0].raw.x;
+                                return timestampToStr(timestamp);
+                            },
+                            label: (context) => {
+                                //@ts-expect-error The chart data is untyped
+                                const value = context.raw.y;
+                                return `${value as number} followers`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: false,
+                        title: { display: true, text: 'Followers' }
+                    },
+                    x: {
+                        type: 'linear',
+                        min: thirtyDaysAgo,
+                        max: now,
+                        title: { display: false },
+                        ticks: {
+                            stepSize: DAYS_STEP * 24 * 3600 * 1000,
+                            callback: (value) => new Date(value).toLocaleDateString(undefined, {
+                                month: 'short', day: 'numeric'
+                            })
+                        }
+                    }
+                }
+            }
+        });
+    } catch (error) {
+        console.error('Failed to render followers chart:', error);
+    }
+}
+
+let fullError: string | null = null;
+async function refreshUi() {
+    fullError = await getLastError();
+    errorLabel.textContent = truncateMessage(fullError, 150);
+    usernameLabel.textContent = await getStoredUsername();
+
+    const counts = await getLatestCounts();
+    if (counts) {
+        followersCountLabel.textContent = counts.followersCount.toString();
+        followingCountLabel.textContent = counts.followingCount.toString();
+
+        const deltaTime = Date.now() - counts.time;
+        const relativeTime = prettyMs(deltaTime, {
+            compact: true,
+            verbose: true
+        });
+        lastRefreshTimeLabel.textContent = relativeTime + ' ago';
+        lastRefreshTimeLabel.title = timestampToStr(counts.time);
+    } else {
+        followersCountLabel.textContent = '?';
+        followingCountLabel.textContent = '?';
+        lastRefreshTimeLabel.textContent = 'never';
+        lastRefreshTimeLabel.title = 'never';
+    }
+
+    await renderFollowersChart();
+
+    await renderFollowerHistory();
+}
+
+function getErrorMessage(error: Error): string {
+    const messages: string[] = [];
+    let curError: Error | unknown = error;
+    while (curError instanceof Error) {
+        messages.push(curError.message);
+        curError = curError.cause;
+    }
+    return messages.join(': ');
+}
+
+errorLabel.addEventListener('click', async () => {
+    if (fullError) {
+        await navigator.clipboard.writeText(fullError);
+        const originalText = errorLabel.textContent;
+        errorLabel.textContent = 'Copied to clipboard';
+        setTimeout(() => {
+            errorLabel.textContent = originalText;
+        }, 500);
+    }
+});
+
+lastRefreshTimeLabel.addEventListener('click', () => {
+    const currentText = lastRefreshTimeLabel.textContent;
+    const currentTitle = lastRefreshTimeLabel.title;
+    lastRefreshTimeLabel.textContent = currentTitle;
+    lastRefreshTimeLabel.title = currentText;
+});
+
+async function doRefresh() {
+    try {
+        lastRefreshTimeLabel.textContent = 'in progress...';
+
+        const refreshTime = Date.now();
+        const userId = await getUserId();
+        const username = await getUsername(userId);
+        await storeUsername(username);
+
+        console.log('Fetching followers');
+        followersCountLabel.textContent = '0...';
+        const followers: User[] = [];
+        let maxId = null;
+        while (true) {
+            const page = await getFriendshipPage(userId, 'followers', maxId);
+            followers.push(...page.users);
+            if (!page.nextMaxId) {
+                break;
+            }
+            followersCountLabel.textContent = followers.length.toString() + '...';
+            maxId = page.nextMaxId;
+        }
+        followersCountLabel.textContent = followers.length.toString();
+        await storeFollowersAndUpdateHistory(followers, refreshTime);
+
+        console.log('Fetching following');
+        followingCountLabel.textContent = '0...';
+        const following: User[] = [];
+        maxId = null;
+        while (true) {
+            const page = await getFriendshipPage(userId, 'following', maxId);
+            following.push(...page.users);
+            if (!page.nextMaxId) {
+                break;
+            }
+            followingCountLabel.textContent = following.length.toString() + '...';
+            maxId = page.nextMaxId;
+        }
+        followingCountLabel.textContent = following.length.toString();
+
+        await storeCounts({
+            time: refreshTime,
+            followersCount: followers.length,
+            followingCount: following.length
+        });
+        await storeLastError('');
+    } catch (error) {
+        if (error instanceof Error) {
+            await storeLastError(getErrorMessage(error));
+        } else {
+            console.error('Got strange error', error);
+            await storeLastError(`Unknown error: ${error}`);
+        }
+    }
+}
+
+refreshBtn.addEventListener('click', async () => {
+    refreshBtn.disabled = true;
+    await doRefresh();
+    await refreshUi();
+    refreshBtn.disabled = false;
+});
+
+window.addEventListener('visibilitychange', async () => {
+    if (document.visibilityState === 'hidden') {
+        await storeHistoryScrollPosition(followersHistoryList.scrollTop);
+    }
+});
+
+await refreshUi();

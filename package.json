@@ -1,0 +1,22 @@
+{
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:ts && npm run build:public",
+    "build:ts": "eslint src/*.ts && esbuild --bundle --target=chrome89,firefox89 --format=esm --outdir=dist src/popup.ts",
+    "build:public": "cp -r public/* dist/"
+  },
+  "devDependencies": {
+    "@eslint/css": "^0.14.1",
+    "@types/firefox-webext-browser": "^143.0.0",
+    "esbuild": "^0.27.2",
+    "eslint": "^9.39.2",
+    "jiti": "^2.6.1",
+    "typescript-eslint": "^8.50.0",
+    "web-ext": "^9.2.0"
+  },
+  "dependencies": {
+    "chart.js": "^4.5.1",
+    "idb": "^8.0.3",
+    "pretty-ms": "^9.3.0"
+  }
+}

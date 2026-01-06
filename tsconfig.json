@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "nodenext",
+    "types": ["firefox-webext-browser"],
+    "skipLibCheck": true,
+
+    /* Bundler mode */
+    "moduleResolution": "nodenext",
+    "verbatimModuleSyntax": true,
+    "moduleDetection": "force",
+    "outDir": "dist",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "erasableSyntaxOnly": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUncheckedSideEffectImports": true
+  },
+  "include": ["src"]
+}
