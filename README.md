@@ -1,7 +1,10 @@
-This is a webextension for tracking followers on Instagram.
+# Insta-petty
+
+This is a webextension for tracking follower count and followed/unfollowed history on Instagram.
 
 ## Browser support
 For now the extension only supports Firefox desktop and Firefox mobile.
+
 
 ## Installing
 
@@ -17,6 +20,12 @@ Installing extension on Android is more involved, see https://bugzilla.mozilla.o
 
 ## Development
 
+### Preparing environment
+Install node.js and run to install all the required libraries and scripts.
+```bash
+npm install
+```
+
 ### Building
 ```bash
 npm run build
@@ -29,7 +38,7 @@ Builds the extension into the `dist/` directory.
 ```bash
 npm run package
 ```
-Builds and creates a packaged `.xpi` file in the `web-extartifacts/` directory. See
+Builds and creates a packaged `.xpi` file in the `web-ext-artifacts/` directory. See
 https://github.com/TomasHubelbauer/firefox-permanent-unsigned-extension?tab=readme-ov-file#update-signing-the-extension-without-publishing-it-on-amo
 
 **Note:** Signing requires AMO API credentials. Set them as environment variables:
@@ -44,3 +53,6 @@ Or create a `.web-ext-config.js` file in the project root.
 rm -rf dist/ web-ext-artifacts/ *.xpi
 ```
 Removes the artifacts.
+
+## License
+MIT: https://opensource.org/license/mit

@@ -35,6 +35,8 @@ const followersChartCanvas = getById<HTMLCanvasElement>('followers-chart');
 const followersHistoryList = getById<HTMLElement>('followers-history-list');
 const followersAddedLabel = getById<HTMLElement>('followers-added');
 const followersRemovedLabel = getById<HTMLElement>('followers-removed');
+const filterFollowedBtn = getById<HTMLButtonElement>('filter-followed');
+const filterUnfollowedBtn = getById<HTMLButtonElement>('filter-unfollowed');
 
 function truncateMessage(str: string, maxLength: number): string {
     if (str.length <= maxLength) {
@@ -56,22 +58,27 @@ interface TimelineEntry {
     action: 'followed' | 'unfollowed';
 }
 
+let historyFilter: 'all' | 'followed' | 'unfollowed' = 'all';
 function createTimelineFromHistory(history: FollowersHistory[]): TimelineEntry[] {
     const timeline: TimelineEntry[] = [];
     for (const entry of history) {
-        for (const user of entry.added) {
-            timeline.push({
-                time: entry.time,
-                user,
-                action: 'followed'
-            });
+        if (historyFilter !== 'unfollowed') {
+            for (const user of entry.added) {
+                timeline.push({
+                    time: entry.time,
+                    user,
+                    action: 'followed'
+                });
+            }
         }
-        for (const user of entry.removed) {
-            timeline.push({
-                time: entry.time,
-                user,
-                action: 'unfollowed'
-            });
+        if (historyFilter !== 'followed') {
+            for (const user of entry.removed) {
+                timeline.push({
+                    time: entry.time,
+                    user,
+                    action: 'unfollowed'
+                });
+            }
         }
     }
     return timeline;
@@ -91,10 +98,6 @@ async function renderFollowerHistory(): Promise<void> {
 
     followersHistoryList.innerHTML = '';
     if (timeline.length === 0) {
-        const emptyEntry = document.createElement('div');
-        emptyEntry.className = 'history-entry';
-        emptyEntry.textContent = 'No followers yet';
-        followersHistoryList.appendChild(emptyEntry);
         return;
     }
 
@@ -116,6 +119,7 @@ async function renderFollowerHistory(): Promise<void> {
         usernameLink.className = 'history-username';
         usernameLink.href = `https://www.instagram.com/${entry.user.username}`;
         usernameLink.textContent = `@${entry.user.username}`;
+        usernameLink.target = '_blank';
         entryDiv.appendChild(usernameLink);
 
         const actionSpan = document.createElement('span');
@@ -137,7 +141,7 @@ let chartInstance: Chart | null = null;
 async function renderFollowersChart() {
     const style = getComputedStyle(followingCountLabel);
     Chart.defaults.font.family = style.fontFamily;
-    Chart.defaults.font.size = 10;
+    Chart.defaults.font.size = 11;
 
     const MAX_DAYS = 30;
     const DAYS_STEP = 5;
@@ -165,7 +169,7 @@ async function renderFollowersChart() {
         chartInstance = new Chart(followersChartCanvas, {
             type: 'line',
             data: {
-                datasets: [{ data: followersData, borderColor: '#9575cd' }]
+                datasets: [{ data: followersData, borderColor: '#c671eb' }]
             },
             options: {
                 animation: {
@@ -252,6 +256,8 @@ async function refreshUi() {
     await renderFollowersChart();
 
     await renderFollowerHistory();
+
+    updateButtonStates();
 }
 
 function getErrorMessage(error: Error): string {
@@ -343,6 +349,23 @@ refreshBtn.addEventListener('click', async () => {
     await doRefresh();
     await refreshUi();
     refreshBtn.disabled = false;
+});
+
+function updateButtonStates() {
+    filterFollowedBtn.classList.toggle('active', historyFilter !== 'unfollowed');
+    filterUnfollowedBtn.classList.toggle('active', historyFilter !== 'followed');
+}
+
+filterFollowedBtn.addEventListener('click', async () => {
+    historyFilter = (historyFilter === 'unfollowed') ? 'all' : 'unfollowed';
+    updateButtonStates();
+    await renderFollowerHistory();
+});
+
+filterUnfollowedBtn.addEventListener('click', async () => {
+    historyFilter = (historyFilter === 'followed') ? 'all' : 'followed';
+    updateButtonStates();
+    await renderFollowerHistory();
 });
 
 window.addEventListener('visibilitychange', async () => {

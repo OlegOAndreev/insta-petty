@@ -1,0 +1,185 @@
+:root {
+    --bg-color: #f9f9fb;
+    --light-bg-color: #fdfdfe;
+    --light-bg-hover-color: #f2f2f4;
+    --light-border: #e0e0e0;
+    --lighter-border: #f0f0f0;
+    --followed-color: #008e00;
+    --unfollowed-color: #cf1748;
+    --error-color: #cf1748;
+    --time-color: #555555;
+    --username-color: #9e3bc3;
+}
+
+body {
+    background-color: var(--bg-color);
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+#global-container {
+    position: absolute;
+    bottom: 0;
+    top: 0;
+    left: 0;
+    right: 0;
+    margin-left: auto;
+    margin-right: auto;
+    font-family: system-ui, sans-serif;
+    font-size: 14px;
+    max-width: 600px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+}
+
+#error {
+    color: var(--error-color);
+    cursor: pointer;
+    overflow-wrap: break-word;
+}
+
+#stats-container {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 12px;
+}
+
+#stats {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#followers-container,
+#following-container {
+    display: flex;
+    gap: 4px;
+}
+
+#followers-delta {
+    /* flex to remove whitespace between spans */
+    display: flex;
+    margin-left: 2px;
+}
+
+#followers-added {
+    margin-left: 2px;
+    color: var(--followed-color);
+    /* Green matching .followed */
+}
+
+#followers-removed {
+    margin-left: 2px;
+    color: var(--unfollowed-color);
+}
+
+#refresh-container {
+    display: flex;
+    align-items: center;
+}
+
+#last-refresh-container {
+    margin-top: 8px;
+    font-size: 12px;
+    text-align: right;
+}
+
+#last-refresh-time {
+    cursor: pointer;
+}
+
+#chart-container {
+    margin-top: 8px;
+}
+
+#followers-chart {
+    height: 175px;
+}
+
+#history-header {
+    padding-top: 8px;
+}
+
+#history-container {
+    display: flex;
+    flex-grow: 1;
+    flex-direction: column;
+    min-height: 0;
+}
+
+#history-container h4 {
+    margin: 6px;
+}
+
+#history-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#history-filters {
+    display: flex;
+    gap: 4px;
+}
+
+#filter-followed,
+#filter-unfollowed {
+    font-size: 13px;
+    padding: 2px 8px;
+    border: 1px solid var(--light-border);
+    background-color: var(--light-bg-color);
+    border-radius: 4px;
+}
+
+#filter-followed:hover,
+#filter-unfollowed:hover {
+    background-color: var(--light-bg-hover-color);
+}
+
+#filter-followed.active {
+    border-color: var(--followed-color);
+    color: var(--followed-color);
+    font-weight: 500;
+}
+
+#filter-unfollowed.active {
+    border-color: var(--unfollowed-color);
+    color: var(--unfollowed-color);
+    font-weight: 500;
+}
+
+#followers-history-list {
+    margin: 2px;
+    border: 1px solid var(--light-border);
+    flex: 1;
+    overflow-x: hidden;
+    overflow-y: scroll;
+}
+
+.history-entry {
+    background-color: var(--light-bg-color);
+    padding: 4px;
+    border-bottom: 1px solid var(--lighter-border);
+    font-size: 13px;
+}
+
+.history-entry.followed {
+    color: var(--followed-color);
+}
+
+.history-entry.unfollowed {
+    color: var(--unfollowed-color);
+}
+
+.history-time {
+    color: var(--time-color);
+    margin-right: 12px;
+}
+
+.history-username {
+    color: var(--username-color);
+    font-weight: 500;
+}
