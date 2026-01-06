@@ -35,6 +35,21 @@ body {
     gap: 4px;
 }
 
+#followers-delta {
+    display: flex;
+    margin-left: 2px;
+}
+
+#followers-added {
+    margin-left: 2px;
+    color: #2e7d32; /* Green matching .followed */
+}
+
+#followers-removed {
+    margin-left: 2px;
+    color: #c62828; /* Red matching .unfollowed */
+}
+
 #refresh-container {
     display: flex;
     align-items: center;

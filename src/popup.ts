@@ -4,6 +4,7 @@ import { getFriendshipPage, getUserId, getUsername } from "./instagram.js";
 import type { FollowersHistory, User } from "./models.js";
 import {
     getCountsHistory,
+    getFollowersDelta,
     getFollowersHistory,
     getHistoryScrollPosition,
     getLastError,
@@ -32,6 +33,8 @@ const followersCountLabel = getById<HTMLElement>('followers-count');
 const followingCountLabel = getById<HTMLElement>('following-count');
 const followersChartCanvas = getById<HTMLCanvasElement>('followers-chart');
 const followersHistoryList = getById<HTMLElement>('followers-history-list');
+const followersAddedLabel = getById<HTMLElement>('followers-added');
+const followersRemovedLabel = getById<HTMLElement>('followers-removed');
 
 function truncateMessage(str: string, maxLength: number): string {
     if (str.length <= maxLength) {
@@ -134,7 +137,7 @@ let chartInstance: Chart | null = null;
 async function renderFollowersChart() {
     const style = getComputedStyle(followingCountLabel);
     Chart.defaults.font.family = style.fontFamily;
-    Chart.defaults.font.size = 12;
+    Chart.defaults.font.size = 10;
 
     const MAX_DAYS = 30;
     const DAYS_STEP = 5;
@@ -219,6 +222,9 @@ async function refreshUi() {
     fullError = await getLastError();
     errorLabel.textContent = truncateMessage(fullError, 150);
     usernameLabel.textContent = await getStoredUsername();
+    if (usernameLabel.textContent === '') {
+        usernameLabel.textContent = '?';
+    }
 
     const counts = await getLatestCounts();
     if (counts) {
@@ -238,6 +244,10 @@ async function refreshUi() {
         lastRefreshTimeLabel.textContent = 'never';
         lastRefreshTimeLabel.title = 'never';
     }
+
+    const delta = await getFollowersDelta(7);
+    followersAddedLabel.textContent = `↑${delta.added}`;
+    followersRemovedLabel.textContent = `↓${delta.removed}`;
 
     await renderFollowersChart();
 

@@ -1,5 +1,5 @@
 import { openDB, type IDBPDatabase } from 'idb';
-import type { CountHistory, FollowersHistory, User } from "./models.js";
+import type { CountDelta, CountHistory, FollowersHistory, User } from "./models.js";
 
 let dbPromise: Promise<IDBPDatabase> | null = null;
 async function getDB(): Promise<IDBPDatabase> {
@@ -142,6 +142,30 @@ export async function getFollowersHistory(maxEntries: number): Promise<Followers
         return entries;
     } catch (error) {
         throw new Error('Getting followers history failed', { cause: error });
+    }
+}
+
+export async function getFollowersDelta(deltaDays: number): Promise<CountDelta> {
+    try {
+        const db = await getDB();
+        const tx = db.transaction('followers_history', 'readonly');
+
+        const now = Date.now();
+        const cutoff = now - (deltaDays * 24 * 3600 * 1000);
+        let totalAdded = 0;
+        let totalRemoved = 0;
+        let cursor = await tx.store.openCursor(IDBKeyRange.lowerBound(cutoff));
+        while (cursor) {
+            const entry = cursor.value as FollowersHistory;
+            totalAdded += entry.added.length;
+            totalRemoved += entry.removed.length;
+            cursor = await cursor.continue();
+        }
+
+        return { added: totalAdded, removed: totalRemoved };
+    } catch (error) {
+        console.error('Failed to get followers delta:', error);
+        return { added: 0, removed: 0 };
     }
 }
 

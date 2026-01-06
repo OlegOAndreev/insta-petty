@@ -15,3 +15,8 @@ export interface FollowersHistory {
     added: User[];
     removed: User[];
 }
+
+export interface CountDelta {
+    added: number;
+    removed: number;
+}
