@@ -28,7 +28,7 @@ body {
     margin-left: auto;
     margin-right: auto;
     font-family: system-ui, sans-serif;
-    font-size: 14px;
+    font-size: 17px;
     max-width: 600px;
     padding: 12px;
     display: flex;
@@ -81,9 +81,18 @@ body {
     align-items: center;
 }
 
+#refresh {
+    font-size: 18px;
+    padding: 4px;
+}
+
+#refresh-emoji {
+    font-size: 19px;
+}
+
 #last-refresh-container {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: 13px;
     text-align: right;
 }
 
@@ -127,7 +136,7 @@ body {
 
 #filter-followed,
 #filter-unfollowed {
-    font-size: 13px;
+    font-size: 15px;
     padding: 2px 8px;
     border: 1px solid var(--light-border);
     background-color: var(--light-bg-color);
@@ -163,7 +172,7 @@ body {
     background-color: var(--light-bg-color);
     padding: 4px;
     border-bottom: 1px solid var(--lighter-border);
-    font-size: 13px;
+    font-size: 16px;
 }
 
 .history-entry.followed {
