@@ -10,6 +10,20 @@
     --time-color: #555555;
     --username-color: #9e3bc3;
     --following-color: #888888;
+    --font-size-base: 15px;
+    --font-size-refresh-btn: 16px;
+    --font-size-small: 12px;
+    --font-size-history: 14px;
+}
+
+/* Make mobile fonts a bit larger */
+@media screen and (max-width: 800px) {
+    :root {
+        --font-size-base: 17px;
+        --font-size-refresh-btn: 18px;
+        --font-size-small: 13px;
+        --font-size-history: 15px;
+    }
 }
 
 body {
@@ -29,7 +43,7 @@ body {
     margin-left: auto;
     margin-right: auto;
     font-family: system-ui, sans-serif;
-    font-size: 17px;
+    font-size: var(--font-size-base);
     max-width: 600px;
     padding: 12px;
     display: flex;
@@ -83,17 +97,13 @@ body {
 }
 
 #refresh {
-    font-size: 18px;
+    font-size: var(--font-size-refresh-btn);
     padding: 4px;
-}
-
-#refresh-emoji {
-    font-size: 19px;
 }
 
 #last-refresh-container {
     margin-top: 8px;
-    font-size: 13px;
+    font-size: var(--font-size-small);
     text-align: right;
 }
 
@@ -137,7 +147,7 @@ body {
 
 #filter-followed,
 #filter-unfollowed {
-    font-size: 15px;
+    font-size: var(--font-size-history);
     padding: 2px 8px;
     border: 1px solid var(--light-border);
     background-color: var(--light-bg-color);
@@ -173,7 +183,7 @@ body {
     background-color: var(--light-bg-color);
     padding: 4px;
     border-bottom: 1px solid var(--lighter-border);
-    font-size: 16px;
+    font-size: var(--font-size-history);
 }
 
 .history-entry.followed {
@@ -196,7 +206,7 @@ body {
 
 .following-back-indicator {
     color: var(--following-color);
-    font-size: 13px;
+    font-size: var(--font-size-small);
     margin-left: 4px;
     font-style: italic;
 }
