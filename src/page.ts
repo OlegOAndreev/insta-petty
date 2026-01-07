@@ -54,39 +54,39 @@ function timestampToStr(time: number): string {
     return `${dateStr} ${timeStr}`;
 }
 
-interface TimelineEntry {
-    time: number;
-    user: User;
-    action: 'followed' | 'unfollowed';
-}
-
 let historyFilter: 'all' | 'followed' | 'unfollowed' = 'all';
-function createTimelineFromHistory(history: FollowersHistory[]): TimelineEntry[] {
-    const timeline: TimelineEntry[] = [];
-    for (const entry of history) {
-        if (historyFilter !== 'unfollowed') {
-            for (const user of entry.added) {
-                timeline.push({
-                    time: entry.time,
-                    user,
-                    action: 'followed'
-                });
-            }
-        }
-        if (historyFilter !== 'followed') {
-            for (const user of entry.removed) {
-                timeline.push({
-                    time: entry.time,
-                    user,
-                    action: 'unfollowed'
-                });
-            }
-        }
+let historyScrolledOnLoad = false;
+
+function makeHistoryLine(user: User, time: number, action: string, isMutual: boolean): HTMLElement {
+    const result = document.createElement('div');
+    result.className = `history-entry ${action}`;
+
+    const timeSpan = document.createElement('span');
+    timeSpan.className = 'history-time';
+    timeSpan.textContent = new Date(time).toLocaleDateString(undefined, { dateStyle: 'medium' });
+    result.appendChild(timeSpan);
+
+    const usernameLink = document.createElement('a') as HTMLAnchorElement;
+    usernameLink.className = 'history-username';
+    usernameLink.href = `https://www.instagram.com/${user.username}`;
+    usernameLink.textContent = `@${user.username}`;
+    usernameLink.rel = 'noopener noreferrer';
+    usernameLink.target = '_blank';
+    result.appendChild(usernameLink);
+
+    const actionSpan = document.createElement('span');
+    actionSpan.textContent = ` ${action}`;
+    result.appendChild(actionSpan);
+
+    if (isMutual) {
+        const followingSpan = document.createElement('span');
+        followingSpan.className = 'following-back-indicator';
+        followingSpan.textContent = '(mutual)';
+        result.appendChild(followingSpan);
     }
-    return timeline;
+    return result;
 }
 
-let historyScrolledOnLoad = false;
 async function renderFollowerHistory(): Promise<void> {
     let history: FollowersHistory[];
     let currentFollowing: User[];
@@ -99,49 +99,24 @@ async function renderFollowerHistory(): Promise<void> {
         return;
     }
 
-    const timeline = createTimelineFromHistory(history);
-
     followersHistoryList.innerHTML = '';
-    if (timeline.length === 0) {
-        return;
-    }
 
     const followingIds = new Set(currentFollowing.map(user => user.id));
-
     const fragment = document.createDocumentFragment();
-    for (const entry of timeline) {
-        const timeStr = new Date(entry.time).toLocaleDateString(undefined, { dateStyle: 'medium' });
-        const actionClass = entry.action;
-        const actionText = entry.action;
 
-        const entryDiv = document.createElement('div');
-        entryDiv.className = `history-entry ${actionClass}`;
-
-        const timeSpan = document.createElement('span');
-        timeSpan.className = 'history-time';
-        timeSpan.textContent = timeStr;
-        entryDiv.appendChild(timeSpan);
-
-        const usernameLink = document.createElement('a') as HTMLAnchorElement;
-        usernameLink.className = 'history-username';
-        usernameLink.href = `https://www.instagram.com/${entry.user.username}`;
-        usernameLink.textContent = `@${entry.user.username}`;
-        usernameLink.target = '_blank';
-        entryDiv.appendChild(usernameLink);
-
-        const actionSpan = document.createElement('span');
-        actionSpan.textContent = ` ${actionText}`;
-        entryDiv.appendChild(actionSpan);
-
-        if (followingIds.has(entry.user.id)) {
-            const followingSpan = document.createElement('span');
-            followingSpan.className = 'following-back-indicator';
-            followingSpan.textContent = '(mutual)';
-            entryDiv.appendChild(followingSpan);
+    for (const entry of history) {
+        if (historyFilter !== 'unfollowed') {
+            for (const user of entry.added) {
+                fragment.appendChild(makeHistoryLine(user, entry.time, 'followed', followingIds.has(user.id)));
+            }
         }
-
-        fragment.appendChild(entryDiv);
+        if (historyFilter !== 'followed') {
+            for (const user of entry.removed) {
+                fragment.appendChild(makeHistoryLine(user, entry.time, 'unfollowed', followingIds.has(user.id)));
+            }
+        }
     }
+
     followersHistoryList.appendChild(fragment);
 
     if (!historyScrolledOnLoad) {
@@ -303,7 +278,7 @@ lastRefreshTimeLabel.addEventListener('click', () => {
 });
 
 // For some reason (bad paging?) we may get duplicate users in following or followers lists.
-function deduplicateUsers(users: User[]) {
+function deduplicateUsers(users: User[]): User[] {
     const result: User[] = [];
     const seenIds: Set<string> = new Set();
     for (const user of users) {
