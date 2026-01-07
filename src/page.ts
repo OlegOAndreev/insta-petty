@@ -4,6 +4,7 @@ import { getFriendshipPage, getUserId, getUsername } from "./instagram.js";
 import type { FollowersHistory, User } from "./models.js";
 import {
     getCountsHistory,
+    getCurrentFollowing,
     getFollowersDelta,
     getFollowersHistory,
     getHistoryScrollPosition,
@@ -12,6 +13,7 @@ import {
     getStoredUsername,
     storeCounts,
     storeFollowersAndUpdateHistory,
+    storeFollowing,
     storeHistoryScrollPosition,
     storeLastError,
     storeUsername
@@ -87,19 +89,24 @@ function createTimelineFromHistory(history: FollowersHistory[]): TimelineEntry[]
 let historyScrolledOnLoad = false;
 async function renderFollowerHistory(): Promise<void> {
     let history: FollowersHistory[];
+    let currentFollowing: User[];
     try {
         history = await getFollowersHistory(1000);
+        currentFollowing = await getCurrentFollowing();
     } catch (error) {
         console.error('Failed to render follower history:', error);
         followersHistoryList.innerHTML = '<div class="history-entry">Error loading history</div>';
         return;
     }
+
     const timeline = createTimelineFromHistory(history);
 
     followersHistoryList.innerHTML = '';
     if (timeline.length === 0) {
         return;
     }
+
+    const followingIds = new Set(currentFollowing.map(user => user.id));
 
     const fragment = document.createDocumentFragment();
     for (const entry of timeline) {
@@ -125,6 +132,13 @@ async function renderFollowerHistory(): Promise<void> {
         const actionSpan = document.createElement('span');
         actionSpan.textContent = ` ${actionText}`;
         entryDiv.appendChild(actionSpan);
+
+        if (followingIds.has(entry.user.id)) {
+            const followingSpan = document.createElement('span');
+            followingSpan.className = 'following-back-indicator';
+            followingSpan.textContent = '(mutual)';
+            entryDiv.appendChild(followingSpan);
+        }
 
         fragment.appendChild(entryDiv);
     }
@@ -327,6 +341,8 @@ async function doRefresh() {
             maxId = page.nextMaxId;
         }
         followingCountLabel.textContent = following.length.toString();
+
+        await storeFollowing(following);
 
         await storeCounts({
             time: refreshTime,

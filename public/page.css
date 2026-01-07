@@ -9,6 +9,7 @@
     --error-color: #cf1748;
     --time-color: #555555;
     --username-color: #9e3bc3;
+    --following-color: #888888;
 }
 
 body {
@@ -191,4 +192,11 @@ body {
 .history-username {
     color: var(--username-color);
     font-weight: 500;
+}
+
+.following-back-indicator {
+    color: var(--following-color);
+    font-size: 13px;
+    margin-left: 4px;
+    font-style: italic;
 }

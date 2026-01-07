@@ -4,7 +4,7 @@ import type { CountDelta, CountHistory, FollowersHistory, User } from "./models.
 let dbPromise: Promise<IDBPDatabase> | null = null;
 async function getDB(): Promise<IDBPDatabase> {
     if (!dbPromise) {
-        dbPromise = openDB('insta-petty', 1, {
+        dbPromise = openDB('insta-petty', 2, {
             upgrade(db) {
                 if (!db.objectStoreNames.contains('followers')) {
                     db.createObjectStore('followers');
@@ -15,10 +15,13 @@ async function getDB(): Promise<IDBPDatabase> {
                 if (!db.objectStoreNames.contains('counts_history')) {
                     db.createObjectStore('counts_history', { keyPath: 'time' });
                 }
+                if (!db.objectStoreNames.contains('following')) {
+                    db.createObjectStore('following');
+                }
             },
             terminated() {
                 console.error('IndexedDB connection terminated');
-                dbPromise = null; // Reset promise to allow reconnection
+                dbPromise = null;
             }
         });
     }
@@ -145,6 +148,30 @@ export async function getFollowersHistory(maxEntries: number): Promise<Followers
     }
 }
 
+export async function storeFollowing(following: User[]): Promise<void> {
+    try {
+        const db = await getDB();
+        const tx = db.transaction('following', 'readwrite');
+        await tx.store.put(following, 'current');
+        console.log(`Stored ${following.length} following users`);
+        await tx.done;
+    } catch (error) {
+        throw new Error('Storing following failed', { cause: error });
+    }
+}
+
+export async function getCurrentFollowing(): Promise<User[]> {
+    try {
+        const db = await getDB();
+        const tx = db.transaction('following', 'readonly');
+        const following = (await tx.store.get('current')) || [];
+        console.debug(`Got ${following.length} following users`);
+        return following;
+    } catch (error) {
+        throw new Error('Getting following failed', { cause: error });
+    }
+}
+
 export async function getFollowersDelta(deltaDays: number): Promise<CountDelta> {
     try {
         const db = await getDB();
@@ -164,8 +191,7 @@ export async function getFollowersDelta(deltaDays: number): Promise<CountDelta> 
 
         return { added: totalAdded, removed: totalRemoved };
     } catch (error) {
-        console.error('Failed to get followers delta:', error);
-        return { added: 0, removed: 0 };
+        throw new Error('Getting followers delta failed', { cause: error });
     }
 }
 
