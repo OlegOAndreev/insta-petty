@@ -302,6 +302,20 @@ lastRefreshTimeLabel.addEventListener('click', () => {
     lastRefreshTimeLabel.title = currentText;
 });
 
+// For some reason (bad paging?) we may get duplicate users in following or followers lists.
+function deduplicateUsers(users: User[]) {
+    const result: User[] = [];
+    const seenIds: Set<string> = new Set();
+    for (const user of users) {
+        if (seenIds.has(user.id)) {
+            continue;
+        }
+        seenIds.add(user.id);
+        result.push(user);
+    }
+    return result;
+}
+
 async function doRefresh() {
     try {
         lastRefreshTimeLabel.textContent = 'in progress...';
@@ -313,7 +327,7 @@ async function doRefresh() {
 
         console.log('Fetching followers');
         followersCountLabel.textContent = '0...';
-        const followers: User[] = [];
+        let followers: User[] = [];
         let maxId = null;
         while (true) {
             const page = await getFriendshipPage(userId, 'followers', maxId);
@@ -324,12 +338,13 @@ async function doRefresh() {
             followersCountLabel.textContent = followers.length.toString() + '...';
             maxId = page.nextMaxId;
         }
+        followers = deduplicateUsers(followers);
         followersCountLabel.textContent = followers.length.toString();
         await storeFollowersAndUpdateHistory(followers, refreshTime);
 
         console.log('Fetching following');
         followingCountLabel.textContent = '0...';
-        const following: User[] = [];
+        let following: User[] = [];
         maxId = null;
         while (true) {
             const page = await getFriendshipPage(userId, 'following', maxId);
@@ -340,6 +355,7 @@ async function doRefresh() {
             followingCountLabel.textContent = following.length.toString() + '...';
             maxId = page.nextMaxId;
         }
+        following = deduplicateUsers(following);
         followingCountLabel.textContent = following.length.toString();
 
         await storeFollowing(following);
