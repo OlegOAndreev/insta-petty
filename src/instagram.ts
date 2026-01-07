@@ -1,10 +1,10 @@
 import type { User } from "./models.js";
 
 const WELL_KNOWN_APP_ID = '936619743392459';
-const LIMIT_FETCH_MS = 300;
+const DELAY_FETCH_FRIENDSHIP_MS = 1200;
 const MAX_RETRIES = 5;
-const RETRY_TIMEOUT_MS = 1000;
-const MAX_FETCH_TIMEOUT = 15000;
+const RETRY_TIMEOUT_MS = 3000;
+const MAX_FETCH_TIMEOUT_MS = 15000;
 
 // Get user id from cookies or show the page to login into instagram.
 export async function getUserId(): Promise<string> {
@@ -52,7 +52,7 @@ export async function getFriendshipPage(userId: string, friendshipType: 'followi
         const result: User[] = [];
 
         const startTime = performance.now();
-        let url = `https://www.instagram.com/api/v1/friendships/${userId}/${friendshipType}?search_surface=follow_list_page`;
+        let url = `https://www.instagram.com/api/v1/friendships/${userId}/${friendshipType}?count=12&search_surface=follow_list_page`;
         if (maxId) {
             url += `&max_id=${maxId}`;
         }
@@ -81,7 +81,7 @@ export async function getFriendshipPage(userId: string, friendshipType: 'followi
                 throw new Error('Empty nextMaxId, while hasMore is true');
             }
             // Limit calls to fetch() per second
-            const nextFetchSleep = LIMIT_FETCH_MS - (performance.now() - startTime);
+            const nextFetchSleep = DELAY_FETCH_FRIENDSHIP_MS - (performance.now() - startTime);
             if (nextFetchSleep > 0) {
                 console.debug(`Sleeping ${nextFetchSleep}ms to avoid rate limiting`);
                 await sleep(nextFetchSleep);
@@ -103,7 +103,7 @@ async function doFetchJson(url: string) {
                 headers: {
                     'x-ig-app-id': WELL_KNOWN_APP_ID
                 },
-                signal: AbortSignal.timeout(MAX_FETCH_TIMEOUT)
+                signal: AbortSignal.timeout(MAX_FETCH_TIMEOUT_MS)
             });
 
             if (response.ok) {
