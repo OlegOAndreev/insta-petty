@@ -1,8 +1,8 @@
 import type { User } from "./models.js";
 
 const WELL_KNOWN_APP_ID = '936619743392459';
-const DELAY_FETCH_FRIENDSHIP_MIN_MS = 1000;
-const DELAY_FETCH_FRIENDSHIP_MAX_MS = 3000;
+const DELAY_FETCH_MIN_MS = 1000;
+const DELAY_FETCH_MAX_MS = 3000;
 const MAX_RETRIES = 5;
 const RETRY_TIMEOUT_MS = 3000;
 const MAX_FETCH_TIMEOUT_MS = 15000;
@@ -48,7 +48,7 @@ export interface Page {
 }
 
 function getRandomBetween(min: number, max: number): number {
-  return Math.random() * (max - min) + min;
+    return Math.random() * (max - min) + min;
 }
 
 // Return the next page of following or followers and the token for the next page. If token is null, the page is the last.
@@ -84,12 +84,6 @@ export async function getFriendshipPage(userId: string, friendshipType: 'followi
             if (!nextMaxId) {
                 throw new Error('Empty nextMaxId, while hasMore is true');
             }
-            // Limit calls to fetch() per second
-            const nextFetchSleep = getRandomBetween(DELAY_FETCH_FRIENDSHIP_MIN_MS, DELAY_FETCH_FRIENDSHIP_MAX_MS);
-            if (nextFetchSleep > 0) {
-                console.debug(`Sleeping ${nextFetchSleep}ms to avoid rate limiting`);
-                await sleep(nextFetchSleep);
-            }
         }
         return { users: result, nextMaxId: nextMaxId };
     } catch (error) {
@@ -109,6 +103,13 @@ async function doFetchJson(url: string) {
                 },
                 signal: AbortSignal.timeout(MAX_FETCH_TIMEOUT_MS)
             });
+
+            // Limit calls to fetch() per second
+            const nextFetchSleep = getRandomBetween(DELAY_FETCH_MIN_MS, DELAY_FETCH_MAX_MS);
+            if (nextFetchSleep > 0) {
+                console.debug(`Sleeping ${nextFetchSleep}ms to avoid rate limiting`);
+                await sleep(nextFetchSleep);
+            }
 
             if (response.ok) {
                 return await response.json();
