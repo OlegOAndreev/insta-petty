@@ -13,8 +13,19 @@
 
 <body>
     <div id="global-container">
-        <h3>Instagram statistics for <span id="username"></span></h3>
+        <h3>Instagram statistics for <span id="username"></span><a id="change-user-link">Change user</a></h3>
         <div id="error" title="Click to copy"></div>
+        
+        <div id="username-change-container" style="display: none;">
+            <div id="username-input-row">
+                <input type="text" id="username-input" placeholder="Enter Instagram username">
+                <button id="save-username">Save</button>
+                <button id="cancel-username">Cancel</button>
+            </div>
+            <div id="clear-data-warning" style="display: none;">
+                <strong>WARNING:</strong> Changing username will clear all existing follower data.
+            </div>
+        </div>
         <div id="stats-container">
             <div id="stats">
                 <div id="followers-container">

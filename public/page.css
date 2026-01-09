@@ -98,7 +98,7 @@ body {
 
 #refresh {
     font-size: var(--font-size-refresh-btn);
-    padding: 4px;
+    padding: 4px 8px;
 }
 
 #last-refresh-container {
@@ -209,4 +209,54 @@ body {
     font-size: var(--font-size-small);
     margin-left: 4px;
     font-style: italic;
+}
+
+#change-user-link {
+    color: var(--username-color);
+    cursor: pointer;
+    font-size: var(--font-size-small);
+    margin-left: 8px;
+    text-decoration: underline;
+}
+
+#username-change-container {
+    margin-top: 8px;
+    padding: 12px;
+    border: 1px solid var(--light-border);
+    border-radius: 4px;
+    background-color: var(--light-bg-color);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+#username-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+#username-input {
+    padding: 6px;
+    border: 1px solid var(--light-border);
+    border-radius: 4px;
+    font-size: var(--font-size-base);
+    font-family: inherit;
+    flex: 1;
+}
+
+#username-input:focus {
+    outline: none;
+    border-color: var(--username-color);
+}
+
+#username-change-container button {
+    font-size: var(--font-size-base);
+    padding: 4px 8px;
+}
+
+#clear-data-warning {
+    color: var(--unfollowed-color);
+    font-size: var(--font-size-small);
+    padding-top: 4px;
 }

@@ -1,31 +1,9 @@
 import { Chart } from "chart.js/auto";
 import prettyMs from "pretty-ms";
-import { getFriendshipPage, getUserId, getUsername } from "./instagram.js";
+import { InstagramClient } from "./instagram.js";
 import type { FollowersHistory, User } from "./models.js";
-import {
-    getCountsHistory,
-    getCurrentFollowing,
-    getFollowersDelta,
-    getFollowersHistory,
-    getHistoryScrollPosition,
-    getLastError,
-    getLatestCounts,
-    getStoredUsername,
-    storeCounts,
-    storeFollowersAndUpdateHistory,
-    storeFollowing,
-    storeHistoryScrollPosition,
-    storeLastError,
-    storeUsername
-} from "./storage.js";
-
-function getById<T extends HTMLElement>(elementId: string): T {
-    const element = document.getElementById(elementId);
-    if (!element) {
-        throw new Error(`Element with id "${elementId}" not found`);
-    }
-    return element as T;
-}
+import { InstagramStorage } from "./storage.js";
+import { deduplicateUsers, getById, timestampToStr, truncateMessage } from "./utils.js";
 
 const errorLabel = getById<HTMLElement>('error');
 const lastRefreshTimeLabel = getById<HTMLElement>('last-refresh-time');
@@ -40,19 +18,15 @@ const followersRemovedLabel = getById<HTMLElement>('followers-removed');
 const filterFollowedBtn = getById<HTMLButtonElement>('filter-followed');
 const filterUnfollowedBtn = getById<HTMLButtonElement>('filter-unfollowed');
 
-function truncateMessage(str: string, maxLength: number): string {
-    if (str.length <= maxLength) {
-        return str;
-    }
-    return str.substring(0, maxLength) + '...';
-}
+const changeUserLink = getById<HTMLAnchorElement>('change-user-link');
+const usernameChangeContainer = getById<HTMLElement>('username-change-container');
+const usernameInput = getById<HTMLInputElement>('username-input');
+const saveUsernameBtn = getById<HTMLButtonElement>('save-username');
+const cancelUsernameBtn = getById<HTMLButtonElement>('cancel-username');
+const clearDataWarning = getById<HTMLElement>('clear-data-warning');
 
-function timestampToStr(time: number): string {
-    const date = new Date(time);
-    const dateStr = date.toLocaleDateString(undefined, { dateStyle: 'medium' });
-    const timeStr = date.toLocaleTimeString(undefined, { timeStyle: 'short', hourCycle: 'h24' });
-    return `${dateStr} ${timeStr}`;
-}
+const client = new InstagramClient();
+const storage = new InstagramStorage();
 
 let historyFilter: 'all' | 'followed' | 'unfollowed' = 'all';
 let historyScrolledOnLoad = false;
@@ -91,8 +65,8 @@ async function renderFollowerHistory(): Promise<void> {
     let history: FollowersHistory[];
     let currentFollowing: User[];
     try {
-        history = await getFollowersHistory(1000);
-        currentFollowing = await getCurrentFollowing();
+        history = await storage.getFollowersHistory(1000);
+        currentFollowing = await storage.getCurrentFollowing();
     } catch (error) {
         console.error('Failed to render follower history:', error);
         followersHistoryList.innerHTML = '<div class="history-entry">Error loading history</div>';
@@ -120,7 +94,7 @@ async function renderFollowerHistory(): Promise<void> {
     followersHistoryList.appendChild(fragment);
 
     if (!historyScrolledOnLoad) {
-        const savedPosition = await getHistoryScrollPosition();
+        const savedPosition = await storage.getHistoryScrollPosition();
         followersHistoryList.scrollTop = savedPosition;
         historyScrolledOnLoad = true;
     }
@@ -135,7 +109,7 @@ async function renderFollowersChart() {
     const MAX_DAYS = 30;
     const DAYS_STEP = 5;
     try {
-        const history = await getCountsHistory(MAX_DAYS);
+        const history = await storage.getCountsHistory(MAX_DAYS);
         if (history.length === 0) {
             return;
         }
@@ -212,14 +186,11 @@ async function renderFollowersChart() {
 
 let fullError: string | null = null;
 async function refreshUi() {
-    fullError = await getLastError();
+    fullError = await storage.getLastError();
     errorLabel.textContent = truncateMessage(fullError, 150);
-    usernameLabel.textContent = await getStoredUsername();
-    if (usernameLabel.textContent === '') {
-        usernameLabel.textContent = '?';
-    }
+    usernameLabel.textContent = await storage.getUsername();
 
-    const counts = await getLatestCounts();
+    const counts = await storage.getLatestCounts();
     if (counts) {
         followersCountLabel.textContent = counts.followersCount.toString();
         followingCountLabel.textContent = counts.followingCount.toString();
@@ -238,7 +209,7 @@ async function refreshUi() {
         lastRefreshTimeLabel.title = 'never';
     }
 
-    const delta = await getFollowersDelta(7);
+    const delta = await storage.getFollowersDelta(7);
     followersAddedLabel.textContent = `↑${delta.added}`;
     followersRemovedLabel.textContent = `↓${delta.removed}`;
 
@@ -277,35 +248,31 @@ lastRefreshTimeLabel.addEventListener('click', () => {
     lastRefreshTimeLabel.title = currentText;
 });
 
-// For some reason (bad paging?) we may get duplicate users in following or followers lists.
-function deduplicateUsers(users: User[]): User[] {
-    const result: User[] = [];
-    const seenIds: Set<string> = new Set();
-    for (const user of users) {
-        if (seenIds.has(user.id)) {
-            continue;
-        }
-        seenIds.add(user.id);
-        result.push(user);
-    }
-    return result;
-}
-
 async function doRefresh() {
     try {
         lastRefreshTimeLabel.textContent = 'in progress...';
 
         const refreshTime = Date.now();
-        const userId = await getUserId();
-        const username = await getUsername(userId);
-        await storeUsername(username);
+
+        let userId: string;
+        const customUserId = await storage.getCustomUserId();
+        if (customUserId) {
+            userId = customUserId;
+            console.log(`Using custom user ID: ${userId}`);
+        } else {
+            userId = await client.getUserId();
+            console.log(`Using cookie-based user ID: ${userId}`);
+        }
+
+        const username = await client.getUsername(userId);
+        await storage.putUsername(username);
 
         console.log('Fetching followers');
         followersCountLabel.textContent = '0...';
         let followers: User[] = [];
         let maxId = null;
         while (true) {
-            const page = await getFriendshipPage(userId, 'followers', maxId);
+            const page = await client.getFriendshipPage(userId, 'followers', maxId);
             followers.push(...page.users);
             if (!page.nextMaxId) {
                 break;
@@ -315,14 +282,14 @@ async function doRefresh() {
         }
         followers = deduplicateUsers(followers);
         followersCountLabel.textContent = followers.length.toString();
-        await storeFollowersAndUpdateHistory(followers, refreshTime);
+        await storage.putFollowersAndUpdateHistory(followers, refreshTime);
 
         console.log('Fetching following');
         followingCountLabel.textContent = '0...';
         let following: User[] = [];
         maxId = null;
         while (true) {
-            const page = await getFriendshipPage(userId, 'following', maxId);
+            const page = await client.getFriendshipPage(userId, 'following', maxId);
             following.push(...page.users);
             if (!page.nextMaxId) {
                 break;
@@ -333,20 +300,20 @@ async function doRefresh() {
         following = deduplicateUsers(following);
         followingCountLabel.textContent = following.length.toString();
 
-        await storeFollowing(following);
+        await storage.putFollowing(following);
 
-        await storeCounts({
+        await storage.putCounts({
             time: refreshTime,
             followersCount: followers.length,
             followingCount: following.length
         });
-        await storeLastError('');
+        await storage.putLastError('');
     } catch (error) {
         if (error instanceof Error) {
-            await storeLastError(getErrorMessage(error));
+            await storage.putLastError(getErrorMessage(error));
         } else {
             console.error('Got strange error', error);
-            await storeLastError(`Unknown error: ${error}`);
+            await storage.putLastError(`Unknown error: ${error}`);
         }
     }
 }
@@ -377,8 +344,114 @@ filterUnfollowedBtn.addEventListener('click', async () => {
 
 window.addEventListener('visibilitychange', async () => {
     if (document.visibilityState === 'hidden') {
-        await storeHistoryScrollPosition(followersHistoryList.scrollTop);
+        await storage.putHistoryScrollPosition(followersHistoryList.scrollTop);
     }
 });
 
-await refreshUi();
+async function showUsernameChangeContainer() {
+    usernameChangeContainer.style.display = 'block';
+    usernameInput.value = '';
+    usernameInput.focus();
+
+    const hasData = await storage.hasStoredData();
+    if (hasData) {
+        clearDataWarning.style.display = 'block';
+    } else {
+        clearDataWarning.style.display = 'none';
+    }
+}
+
+function hideUsernameChangeContainer() {
+    usernameChangeContainer.style.display = 'none';
+}
+
+async function showUsernameError(message: string) {
+    await storage.putLastError(message);
+    errorLabel.textContent = message;
+}
+
+// Validate Instagram username format
+async function validateUsername(username: string): Promise<boolean> {
+    if (!username || username.trim() === '') {
+        await showUsernameError('Username cannot be empty');
+        return false;
+    }
+
+    return true;
+}
+
+// Change user link click handler - toggle visibility
+changeUserLink.addEventListener('click', async () => {
+    if (usernameChangeContainer.style.display === 'none') {
+        await showUsernameChangeContainer();
+    } else {
+        hideUsernameChangeContainer();
+    }
+});
+
+// Cancel button click handler
+cancelUsernameBtn.addEventListener('click', () => {
+    hideUsernameChangeContainer();
+});
+
+saveUsernameBtn.addEventListener('click', async () => {
+    const username = usernameInput.value.trim();
+    if (!(await validateUsername(username))) {
+        return;
+    }
+
+    saveUsernameBtn.disabled = true;
+    try {
+        const userId = await client.getUserIdFromUsername(username);
+        await storage.clearAllData();
+        await storage.putCustomUserId(userId);
+        await storage.putUsername(username);
+        hideUsernameChangeContainer();
+        await refreshUi();
+    } catch (error) {
+        if (error instanceof Error) {
+            await showUsernameError(error.message);
+        } else {
+            await showUsernameError(`Unknown error: ${error}`);
+        }
+    } finally {
+        saveUsernameBtn.disabled = false;
+    }
+});
+
+// Handle Enter key in username input
+usernameInput.addEventListener('keypress', (event) => {
+    if (event.key === 'Enter') {
+        saveUsernameBtn.click();
+    }
+});
+
+async function onLoad() {
+    const customUserId = await storage.getCustomUserId();
+    if (customUserId) {
+        console.log(`Using custom user ID ${customUserId}, no need to refresh the username right now`);
+    } else {
+        // If we do not have custom user ID, we must use the user id from cookies. Check if we need to resolve it to
+        // username first (i.e. we are opening the page for the first time). We have a custom user ID, just refresh the
+        // UI.
+        const storedUsername = await storage.getUsername();
+        if (!storedUsername) {
+            try {
+                const userId = await client.getUserId();
+                console.log(`Using cookie-based user ID: ${userId}, resolving to username`);
+                const username = await client.getUsername(userId);
+                console.log(`Resolved username ${username}`);
+                await storage.putUsername(username);
+            } catch (error) {
+                if (error instanceof Error) {
+                    await storage.putLastError(getErrorMessage(error));
+                } else {
+                    await storage.putLastError(`Unknown error: ${error}`);
+                }
+            }
+        }
+    }
+    await refreshUi();
+}
+
+await onLoad();

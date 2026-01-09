@@ -18,6 +18,14 @@ https://support.mozilla.org/en-US/kb/find-and-install-add-ons-add-features-to-fi
 Installing extension on Android is more involved, see https://bugzilla.mozilla.org/show_bug.cgi?id=1814123#c2
 
 
+## Usage
+
+1. Log into the Instagram account by opening http://www.instagram.com
+2. Click on the extension button
+3. Choose the user you would like to track. By default the extension tracks the logged in user
+4. Press Refresh button
+
+
 ## Development
 
 ### Preparing environment
