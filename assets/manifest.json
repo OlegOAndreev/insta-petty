@@ -16,7 +16,7 @@
     ],
     "background": {
         "scripts": [
-            "background-script.js"
+            "background.js"
         ],
         "persistent": false,
         "type": "module"
